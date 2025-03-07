@@ -28,6 +28,10 @@ x = mvnrnd(meanX0, varX0, 1)';
 w = mvnrnd(zeros(nx,1),Q, 1)';
 x(:,2) = F*x(:,1) + w(:,1);
 
+% True preditive PDF
+predMeans = [F * X01, F * X02];  
+predGMM = gmdistribution(predMeans', cat(3, F * VARX01 * F' + Q, F * VARX02 * F' + Q), [alpha1, alpha2]); 
+
 % Initial grid
 [filtGrid, filtGridDelta, gridDimOld, gridCenter, gridRotation] = gridCreation(meanX0,varX0,sFactor,nx,Npa);
 
@@ -104,10 +108,6 @@ if technique == 2
         gridSize(d) = Npa(d);
         % Derivatives coefficients
         kInd{d} = 2 * pi / L(d) * fftshift(-(Npa(d)) / 2 : (Npa(d)) / 2 - 1).';
-        % Mixed derivatives coefficients (not needed for this code)
-        if whichDer(d)
-            kindFirst{d} = -2 * pi * 1i / L(d) * fftshift(-(Npa(d)) / 2 : (Npa(d)) / 2 - 1).';
-        end
     end
 
     % Initialize coefficient with ones of the final tensor shape
@@ -118,20 +118,6 @@ if technique == 2
         shape = ones(1, dims);
         shape(d) = gridSize(d);
         coeficienty = coeficienty + reshape(kInd{d}.^2 * dtSpec * (Q(d, d) / 2), shape);
-    end
-
-    % Add cross-terms - mixed derivatives (not needed here)
-    for d1 = 1:dims
-        for d2 = d1+1:dims
-            if Q(d1,d2)
-                shape1 = ones(1, dims);
-                shape2 = ones(1, dims);
-                shape1(d1) = gridSize(d1);
-                shape2(d2) = gridSize(d2);
-                coeficienty = coeficienty + reshape(kindFirst{d1} * dtSpec * (Q(d1, d2) / 2), shape1) ...
-                    .* reshape(kindFirst{d2} * dtSpec * (Q(d1, d2) / 2), shape2);
-            end
-        end
     end
 
     % Prepare the coefficients for the whole time step k -> k+1
@@ -152,7 +138,7 @@ if technique == 2
     t_diff = toc;
 end
 
-%% Diffusion solution - CPD-based -----------------------------------------
+%% Diffusion solution - Matrix exponential-based -----------------------------------------
 
 
 if technique == 0
@@ -259,7 +245,7 @@ predVarPMF = chip_w*chip_' * prod(predGridDelta); % Measurement update variance
 % Check results
 % fprintf('----------------------Diffusion + advection----------------------\n')
 [e_mean, e_var] = printGaussianMixInfo(advPredTrue, meanCovTrueDiff, predMeanPMF, predVarPMF);
-D_KL = compute_KL_divergence(advPredTrue, meanCovTrueDiff, advSolGrid, predPdf);
+D_KL = compute_KL_divergence(predGMM, advSolGrid, predPdf);
 
 end
 
