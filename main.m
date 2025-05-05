@@ -1,9 +1,9 @@
-clc
+% clc
 clear variables
 close all
 % 0 FDM exponential based, 1 FFT method, 2 Spectral differentiation,
 % 3 fast sine transform method
-technique = 1;
+technique = 0;
 Npa = [51 51]; % number of points per axis (must be odd for FFT method)
 Q = 0.1*eye(2); % covariance matrix for dynamics
 dt = 0.1; % Numerilam methofs time step (technique 2 and 3)
