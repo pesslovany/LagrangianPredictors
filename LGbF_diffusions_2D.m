@@ -204,35 +204,40 @@ if technique == 1
     t_diff = toc;
 end
 
-%%  Fast sine transform
 if technique == 3
-    advSolDelta = predGridDelta; % Equdistant grid resolution per axis
-    predPdf = reshape(predPdf,Npa);
-    advSolGrid = predGridDim;
-
-    mesPdfDotDeltasTens = (predPdf*prod(gridStepNew)); % filt PDF * filt PDF step size
+    %–– reshape & prep
+    advSolDelta         = predGridDelta;                   % [dx1, dx2]
+    predPdf             = reshape(predPdf, Npa);           % N1×N2
+    advSolGrid          = predGridDim;
+    mesPdfDotDeltasTens = predPdf * prod(gridStepNew);     % scale by area
 
     tic
+    %–– diffusion coefficients
+    a = (Q(1,1)*dtSpec) / (2*advSolDelta(1)^2);
+    b = 1 ...
+      - (Q(1,1)*dtSpec) / (2*advSolDelta(1)^2) ...
+      - (Q(2,2)*dtSpec) / (2*advSolDelta(2)^2);
+    c =  Q(2,2)*dtSpec / (2*advSolDelta(2)^2);
 
-    a = (Q(1,1)*dtSpec)/(2*advSolDelta(1)^2); % Finite difference diffusion matrix diagonal values
-    b = 1 - (Q(1,1)*dtSpec)/(2*advSolDelta(1)^2) - (Q(2,2)*dtSpec)/(2*advSolDelta(2)^2);
-    c = Q(2,2)*dtSpec/(2*advSolDelta(2)^2);
+    %–– build 2-D eigenvalue grid
+    count1 = (1:Npa(1)) * pi/(Npa(1)+1);
+    count2 = (1:Npa(2)) * pi/(Npa(2)+1);
+    [c1, c2] = ndgrid(count1, count2);
+    lambdaJ = b ...
+            + 2*a*cos(c1) ...
+            + 2*c*cos(c2);
 
-    count = (1:1:Npa(1)); % Indices
-    % Eigenvalues of diffusion matrix
-    lambdaJ = b + 2*a*cos((count*pi)/(Npa(1)+1)) + 2*c*cos((count'*pi)/(Npa(1)+1)); 
+    %–– spectral step
+    asd                 = dtt2D(mesPdfDotDeltasTens, 5); 
+    predDensityProb2cub = dtt2D(lambdaJ.^(1/dtSpec) .* asd, 5);
+    t_diff              = toc;
 
-    % Fast sine calculation of prediction
-    posteriorInSine = (dtt2D(mesPdfDotDeltasTens,5)); 
-    predDensityProb2cub = dtt2D(lambdaJ.^(1/dtSpec).*posteriorInSine,5);
-
-    % Normalization reshaping
-    predPdf = reshape(predDensityProb2cub,length(predGridAdvect),1); % back to vector for easier manipulation
-    predPdf = predPdf./(sum(predPdf)*prod(predGridDelta)); % Normalizaton (theoretically not needed)
-    predPdf(predPdf<0) = 0; % SFT approach sometimes can produce very small negative values
-
-    t_diff = toc;
+    %–– back to vector & normalize
+    predPdf = reshape(predDensityProb2cub, prod(Npa), 1);
+    predPdf = predPdf ./ (sum(predPdf) * prod(predGridDelta));
+    predPdf(predPdf < 0) = 0;
 end
+
 
 %%
 
