@@ -98,7 +98,7 @@ if technique == 2
     filtDenDOTprodDeltasCub = setEdgesToZeros(filtDenDOTprodDeltasCub);
 
     dims = numel(gridDimOld);
-    L = cellfun(@(g) g(end) - g(1), advSolGrid);
+    L = cellfun(@(g) g(end) - g(1), advSolGrid) + advSolDelta;
 
     kInd = cell(1, dims);
     kindFirst = cell(1, dims);
