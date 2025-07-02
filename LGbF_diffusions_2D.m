@@ -101,7 +101,6 @@ if technique == 2
     L = cellfun(@(g) g(end) - g(1), advSolGrid) + advSolDelta;
 
     kInd = cell(1, dims);
-    kindFirst = cell(1, dims);
     gridSize = zeros(1, dims);
 
     for d = 1:dims
@@ -117,11 +116,12 @@ if technique == 2
     for d = 1:dims
         shape = ones(1, dims);
         shape(d) = gridSize(d);
-        coeficienty = coeficienty + reshape(kInd{d}.^2 * dtSpec * (Q(d, d) / 2), shape);
+        coeficienty = coeficienty + reshape(kInd{d}.^2  * (Q(d, d) / 2), shape);
     end
 
     % Prepare the coefficients for the whole time step k -> k+1
-    coeficienty = (1 ./(1 + coeficienty)).^(1 / dtSpec);
+    % coeficienty = (1 ./(1 + coeficienty)).^(1 / dtSpec);
+    coeficienty = exp(-coeficienty);
 
     %  Do the update
     dims = 1:1:nx;
